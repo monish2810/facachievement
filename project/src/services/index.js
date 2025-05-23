@@ -5,11 +5,9 @@ import cors from 'cors';
 import express from 'express';
 import fs from "fs";
 import mongoose from 'mongoose';
-import multer from "multer";
 import path from "path";
 import Achievement from './models/Achievement.js';
-import User from './models/User.js'; // <-- Add this import
-import { getUpload, setupGridFS } from './upload.js';
+import User from './models/User.js';
 
 // Ensure files directory exists
 const filesDir = path.join(process.cwd(), "files");
@@ -17,21 +15,13 @@ if (!fs.existsSync(filesDir)) {
   fs.mkdirSync(filesDir);
 }
 
-// Multer storage for local disk
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, filesDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now();
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  },
-});
-const upload = multer({ storage: storage });
+const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/files", express.static(filesDir));
+
+// Remove file upload and static file serving for achievements
+// ...existing code...
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
@@ -44,24 +34,17 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 const conn = mongoose.connection;
-setupGridFS(conn);
 
 // Only register routes after connection is open
 conn.once('open', () => {
-  const uploadHandler = getUpload();
-
-  // Upload certificate (PDF) and create achievement
+  // Upload achievement with Google Drive link
   app.post(
     '/api/achievements',
-    upload.single('certificatePdf'),
     async (req, res) => {
       try {
-        // Debug log
-        console.log("Received achievement upload:", req.body, req.file);
-
-        const { academicYear, certificateYear, title, description, teacherId } = req.body;
-        if (!req.file || !req.file.filename) {
-          return res.status(400).json({ error: "Certificate PDF upload failed" });
+        const { academicYear, certificateYear, title, description, teacherId, certificatePdf } = req.body;
+        if (!certificatePdf || typeof certificatePdf !== "string") {
+          return res.status(400).json({ error: "Certificate PDF Google Drive link is required" });
         }
         let achievementData = {
           academicYear,
@@ -69,21 +52,13 @@ conn.once('open', () => {
           title,
           description,
           teacher: teacherId,
-          certificatePdf: req.file.filename,
+          certificatePdf, // Google Drive link
           status: 'Under Review',
           submittedAt: new Date(),
         };
 
         const achievement = new Achievement(achievementData);
         await achievement.save();
-
-        // Save PDF details (optional, for listing PDFs)
-        await PdfDetails.create({
-          title,
-          pdf: req.file.filename,
-          teacherId,
-          achievementId: achievement._id.toString(),
-        });
 
         res.json({ status: "ok", achievement });
       } catch (err) {
@@ -92,28 +67,6 @@ conn.once('open', () => {
       }
     }
   );
-
-  // Download certificate PDF (from BinData or GridFS)
-  app.get('/api/certificates/:id', async (req, res) => {
-    try {
-      // Try BinData first
-      const achievement = await Achievement.findById(req.params.id);
-      if (achievement && achievement.certificatePdfBin) {
-        res.set('Content-Type', achievement.certificatePdfMimeType || 'application/pdf');
-        res.set('Content-Disposition', `attachment; filename="${achievement.certificatePdfFileName || 'certificate.pdf'}"`);
-        return res.send(achievement.certificatePdfBin);
-      }
-      // Else, try GridFS
-      const gfs = global.gfs;
-      const file = await gfs.files.findOne({ _id: mongoose.Types.ObjectId(req.params.id) });
-      if (!file) return res.status(404).json({ error: 'File not found' });
-      const readstream = gfs.createReadStream({ _id: file._id });
-      res.set('Content-Type', file.contentType || 'application/pdf');
-      readstream.pipe(res);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
 
   // --- User Endpoints ---
 
@@ -293,32 +246,6 @@ conn.once('open', () => {
       res.json({ user: userObj, token: "dummy-token" });
     } catch (err) {
       res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Upload PDF with teacherId and achievementId
-  app.post("/api/upload-pdf", upload.single("file"), async (req, res) => {
-    const { title, teacherId, achievementId } = req.body;
-    const fileName = req.file.filename;
-    try {
-      await PdfDetails.create({ title, pdf: fileName, teacherId, achievementId });
-      res.send({ status: "ok", file: fileName });
-    } catch (error) {
-      res.status(500).json({ status: "error", error: error.message });
-    }
-  });
-
-  // Get all PDFs (optionally filter by teacherId or achievementId)
-  app.get("/api/get-pdfs", async (req, res) => {
-    try {
-      const { teacherId, achievementId } = req.query;
-      const filter = {};
-      if (teacherId) filter.teacherId = teacherId;
-      if (achievementId) filter.achievementId = achievementId;
-      const data = await PdfDetails.find(filter);
-      res.send({ status: "ok", data });
-    } catch (error) {
-      res.status(500).json({ status: "error", error: error.message });
     }
   });
 });

@@ -4,7 +4,6 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { AchievementFormData } from "../types";
 import Button from "./ui/Button";
-import FileInput from "./ui/FileInput";
 import Input from "./ui/Input";
 import Select from "./ui/Select";
 import TextArea from "./ui/TextArea";
@@ -27,9 +26,7 @@ const schema = z.object({
   ),
   title: z.string().min(5, "Title must be at least 5 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  certificatePdf: z.instanceof(File, {
-    message: "Certificate PDF is required",
-  }),
+  certificatePdf: z.string().url("A valid Google Drive link is required"),
 });
 
 const AchievementForm: React.FC<AchievementFormProps> = ({
@@ -49,7 +46,7 @@ const AchievementForm: React.FC<AchievementFormProps> = ({
       certificateYear: new Date().getFullYear(),
       title: "",
       description: "",
-      certificatePdf: null,
+      certificatePdf: "",
     },
   });
 
@@ -64,10 +61,6 @@ const AchievementForm: React.FC<AchievementFormProps> = ({
   });
 
   const handleFormSubmit = (data: AchievementFormData) => {
-    // Ensure certificatePdf is a File object
-    if (!data.certificatePdf || !(data.certificatePdf instanceof File)) {
-      return;
-    }
     onSubmit({ ...data, teacherId }); // inject teacherId into form data
   };
 
@@ -112,20 +105,12 @@ const AchievementForm: React.FC<AchievementFormProps> = ({
         {...register("description")}
       />
 
-      <Controller
-        name="certificatePdf"
-        control={control}
-        render={({ field: { onChange, value, ...field } }) => (
-          <FileInput
-            id="certificatePdf"
-            label="Certificate PDF"
-            accept=".pdf"
-            error={errors.certificatePdf?.message}
-            onChange={onChange}
-            value={value}
-            {...field}
-          />
-        )}
+      <Input
+        id="certificatePdf"
+        label="Google Drive Link to Certificate PDF"
+        error={errors.certificatePdf?.message}
+        {...register("certificatePdf")}
+        placeholder="https://drive.google.com/..."
       />
 
       <div className="flex justify-end">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import AchievementCard from "../components/AchievementCard";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Card from "../components/ui/Card";
 import { getTeacherAchievements } from "../services/achievementService";
@@ -11,19 +12,26 @@ const FacultyProfilePage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
-      const users = await getAllUsers();
-      const foundUser = users.find((u) => u.teacherId === teacherId);
-      if (isMounted) setUser(foundUser || null);
+      try {
+        setError(null);
+        const users = await getAllUsers();
+        const foundUser = users.find((u) => u.teacherId === teacherId);
+        if (isMounted) setUser(foundUser || null);
 
-      if (teacherId) {
-        const achs = await getTeacherAchievements(teacherId);
-        if (isMounted) setAchievements(achs);
+        if (teacherId) {
+          const achs = await getTeacherAchievements(teacherId);
+          if (isMounted) setAchievements(achs);
+        }
+      } catch (err: any) {
+        if (isMounted) setError("Failed to load data.");
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
     };
     fetchData();
     return () => {
@@ -37,6 +45,14 @@ const FacultyProfilePage: React.FC = () => {
         <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12 text-red-500">{error}</div>
       </DashboardLayout>
     );
   }
@@ -56,6 +72,11 @@ const FacultyProfilePage: React.FC = () => {
       </DashboardLayout>
     );
   }
+
+  const sortedAchievements = [...achievements].sort(
+    (a, b) =>
+      new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+  );
 
   return (
     <DashboardLayout>
@@ -88,30 +109,19 @@ const FacultyProfilePage: React.FC = () => {
           </div>
         </Card>
         <Card>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Achievements ({achievements.length})
-          </h3>
           {achievements.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
-              No achievements found for this faculty member.
+            <div className="text-center text-gray-500 py-8">
+              No achievements found.
             </div>
           ) : (
-            <ul className="divide-y divide-gray-200">
-              {achievements.map((a) => (
-                <li key={a._id} className="py-4">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-gray-900">{a.title}</span>
-                    <span className="text-sm text-gray-600">
-                      {a.description}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Academic Year: {a.academicYear} | Certificate Year:{" "}
-                      {a.certificateYear} | Status: {a.status}
-                    </span>
-                  </div>
-                </li>
+            <div className="grid gap-6 md:grid-cols-2">
+              {sortedAchievements.map((achievement) => (
+                <AchievementCard
+                  key={achievement._id}
+                  achievement={achievement}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </Card>
       </div>

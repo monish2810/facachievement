@@ -262,7 +262,7 @@ const HodDashboardPage: React.FC = () => {
             {selectedAchievement.certificatePdf && (
               <div className="mb-4">
                 <a
-                  href={`/api/certificates/${selectedAchievement.certificatePdf}`}
+                  href={selectedAchievement.certificatePdf}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary-600 underline"

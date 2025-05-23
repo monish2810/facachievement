@@ -18,7 +18,7 @@ export interface Achievement {
   certificateYear: number;
   title: string;
   description: string;
-  certificatePdf: string; // Required, not optional
+  certificatePdf: string; // Now: Google Drive link (required)
   status: "Under Review" | "Approved" | "Rejected";
   submittedAt: string;
   reviewedAt?: string;
@@ -45,7 +45,7 @@ export interface AchievementFormData {
   certificateYear: number;
   title: string;
   description: string;
-  certificatePdf: File | null;
+  certificatePdf: string; // Now: Google Drive link (required)
   teacherId: string;
 }
 

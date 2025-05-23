@@ -6,7 +6,7 @@ const AchievementSchema = new mongoose.Schema({
   title: String,
   description: String,
   teacher: String, // should be teacherId like "T001"
-  certificatePdf: { type: String, required: true }, // Make required
+  certificatePdf: { type: String, required: true }, // Now: Google Drive link (required)
   status: { type: String, enum: ['Under Review', 'Approved', 'Rejected'], default: 'Under Review' },
   submittedAt: Date,
   reviewedAt: Date,

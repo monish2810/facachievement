@@ -26,23 +26,18 @@ export const getAllAchievements = async (): Promise<Achievement[]> => {
   return data;
 };
 
-// Create a new achievement (with optional PDF upload)
+// Create a new achievement (with Google Drive link)
 export const createAchievement = async (
   achievementData: AchievementFormData
 ): Promise<Achievement> => {
   try {
-    const formData = new FormData();
-    Object.keys(achievementData).forEach((key) => {
-      if (key === "certificatePdf" && achievementData[key]) {
-        formData.append("certificatePdf", achievementData[key]);
-      } else {
-        formData.append(key, achievementData[key]);
+    const { data } = await api.post<Achievement>(
+      "/achievements",
+      achievementData,
+      {
+        headers: { "Content-Type": "application/json" },
       }
-    });
-
-    const { data } = await api.post<Achievement>("/achievements", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    );
     return data;
   } catch (error) {
     console.error("Failed to create achievement:", error);

@@ -34,8 +34,19 @@ const AchievementCard: React.FC<AchievementCardProps> = ({
   // Helper to get certificate download/view URL
   const getCertificateUrl = () => {
     if (!achievement.certificatePdf) return "#";
-    // Assumes backend serves at /api/certificates/:id
-    return `/api/certificates/${achievement.certificatePdf}`;
+    return achievement.certificatePdf; // Google Drive link
+  };
+
+  // Helper to get direct download link for Google Drive
+  const getDownloadUrl = () => {
+    const url = achievement.certificatePdf;
+    // If it's a Google Drive share link, convert to direct download
+    // e.g. https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    const match = url.match(/\/file\/d\/([^/]+)\//);
+    if (match) {
+      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    }
+    return url;
   };
 
   return (
@@ -72,16 +83,29 @@ const AchievementCard: React.FC<AchievementCardProps> = ({
           </div>
           <div className="flex space-x-2">
             {achievement.certificatePdf && (
-              <a
-                href={getCertificateUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-2 py-1 text-xs rounded bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200"
-                title="View Certificate PDF"
-              >
-                <Download size={14} className="mr-1" />
-                View PDF
-              </a>
+              <>
+                <a
+                  href={getCertificateUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200"
+                  title="View Certificate PDF"
+                >
+                  <Download size={14} className="mr-1" />
+                  View PDF
+                </a>
+                <a
+                  href={getDownloadUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                  title="Download Certificate PDF"
+                >
+                  <Download size={14} className="mr-1" />
+                  Download PDF
+                </a>
+              </>
             )}
             {showControls && (
               <>
@@ -107,6 +131,19 @@ const AchievementCard: React.FC<AchievementCardProps> = ({
             )}
           </div>
         </div>
+        {/* Always show PDF link for HOD/faculty */}
+        {achievement.certificatePdf && (
+          <div className="mt-2">
+            <a
+              href={achievement.certificatePdf}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary-600 underline text-xs"
+            >
+              Certificate PDF Link
+            </a>
+          </div>
+        )}
       </div>
     </Card>
   );
